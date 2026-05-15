@@ -31,3 +31,11 @@ buildNumber.properties
 # Build
 bin/
 build/
+
+# Sensitive Config Files - DO NOT COMMIT
+application.properties
+application-*.properties
+*.env
+.env
+.env.local
+secrets.properties

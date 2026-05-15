@@ -1,0 +1,85 @@
+<button id="payBtn">Pay with Razorpay</button>
+
+<script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+<script>
+document.getElementById('payBtn').onclick = async function () {
+    const bookingId = 3;
+    const amount = 4590;
+
+    try {
+        const response = await fetch(`http://localhost:8087/api/payments/create-order?amount=${amount}&bookingId=${bookingId}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
+
+        const order = await response.json();
+
+        if (!order || !order.id) {
+            alert("Failed to create Razorpay order.");
+            return;
+        }
+
+        const options = {
+            key: "rzp_test_a8KFlpLpfjI4QE", 
+            amount: order.amount,
+            currency: order.currency,
+            name: "Flight Booking",
+            description: "Ticket Payment",
+            order_id: order.id,
+            handler: async function (response) {
+                // Razorpay returns these only on successful payment
+                const { razorpay_payment_id, razorpay_order_id, razorpay_signature } = response;
+
+                console.log("Payment ID:", razorpay_payment_id);
+                console.log("Order ID:", razorpay_order_id);
+                console.log("Signature:", razorpay_signature);
+
+                // Verify and confirm booking via backend
+                const verifyPayload = {
+                    razorpayPaymentId: razorpay_payment_id,
+                    razorpayOrderId: razorpay_order_id,
+                    razorpaySignature: razorpay_signature,
+                    bookingId: bookingId
+                };
+
+                try {
+                    const verifyResponse = await fetch('http://localhost:8087/api/payments/verify', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(verifyPayload)
+                    });
+
+                    const verifyResult = await verifyResponse.text(); // use .text() to catch any response
+                    alert(verifyResult);
+                } catch (error) {
+                    alert("Error verifying payment: " + error.message);
+                }
+            },
+            prefill: {
+                name: "Harsh Chaudhary",
+                email: "harsh@example.com",
+                contact: "9876543210"
+            },
+            theme: {
+                color: "#3399cc"
+            }
+        };
+
+        const razorpay = new Razorpay(options);
+        razorpay.open();
+
+        razorpay.on('payment.failed', function (response) {
+            alert("Payment failed: " + response.error.description);
+            console.error(response.error);
+        });
+
+    } catch (error) {
+        console.error("Error:", error);
+        alert("Something went wrong.");
+    }
+};
+</script>
